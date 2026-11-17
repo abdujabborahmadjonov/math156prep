@@ -344,7 +344,13 @@ details.closed > summary { cursor: pointer; color: var(--graphite); font-weight:
 .foot dl { margin-top: 14px; display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px 20px; max-width: 720px; }
 .foot dt { font-weight: 600; color: var(--ink); }
 .foot dd { line-height: 1.55; }
-.save-note { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.foot details + details { margin-top: 10px; }
+.backup > p, .backup > label { margin-top: 12px; max-width: 560px; }
+.backup-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.backup textarea { font-size: 13px; min-height: 0; }
+#backup-msg { margin-top: 12px; color: var(--ink); font-weight: 500; }
+#backup-msg:empty { display: none; }
+[hidden] { display: none !important; }
 
 /* Narrow screens */
 

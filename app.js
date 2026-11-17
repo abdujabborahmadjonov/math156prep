@@ -77,6 +77,7 @@
   // ---------- views ----------
 
   let selected = null; // a day picked from the squares; null means today
+  let armed = null;    // a destructive button that has been pressed once and waits for a second press
 
   function focusDate() {
     if (selected && byDate[selected]) return selected;
@@ -259,7 +260,7 @@
       <p class="meta">${esc(meta)}</p>
       <p class="what">${esc(m.what)}</p>
       ${m.fix ? `<p class="fix"><b>Fix:</b> ${esc(m.fix)}</p>` : ""}
-      <div class="row">${row}<button type="button" class="link small" data-action="remove" data-id="${m.id}">Remove</button></div>
+      <div class="row">${row}<button type="button" class="link small" data-action="remove" data-id="${m.id}" data-key="rm-${m.id}">${armed === "rm-" + m.id ? "Press again to remove" : "Remove"}</button></div>
     </li>`;
   }
 
@@ -429,7 +430,7 @@
           <div class="qtext">${tex(q.q)}</div></li>`).join("")}</ol>
         <div class="row end">
           <button type="button" class="btn" data-action="finish">Finish and mark</button>
-          <button type="button" class="link" data-action="abandon">Stop without marking</button>
+          <button type="button" class="link" data-action="abandon" data-key="abandon">${armed === "abandon" ? "Press again to stop. Nothing will be saved" : "Stop without marking"}</button>
         </div>`;
     }
 
@@ -449,7 +450,8 @@
         </li>`).join("")}</ol>
         <div class="row end">
           <span class="tally"><strong>${got} of ${total}</strong> so far</span>
-          <button type="button" class="btn" data-action="savescore">Save my score</button>
+          <button type="button" class="btn" data-action="savescore" data-key="savescore">${armed === "savescore" ? "Save anyway" : "Save my score"}</button>
+          ${armed === "savescore" ? `<span class="quiet small">Questions without marks will count as zero.</span>` : ""}
         </div>`;
     }
 
@@ -504,6 +506,8 @@
     const el = e.target.closest("[data-action]");
     if (!el || el.tagName === "INPUT") return;
     const a = el.dataset.action, t = today();
+    const wasArmed = armed; armed = null;
+    const twice = (key) => { if (wasArmed === key) return true; armed = key; render(key); return false; };
     if (a === "openall" || a === "closeall") { view.querySelectorAll("details.formula").forEach((d) => { d.open = a === "openall"; }); return; }
     if (a === "logfrom") { draft = { unit: Number(el.dataset.unit), source: el.dataset.source }; location.hash = "#mistakes"; return; }
     if (a === "gounit") { state.unit = Number(el.dataset.unit); save(); location.hash = "#practice"; return; }
@@ -515,11 +519,11 @@
       save(); render(); window.scrollTo(0, 0); return;
     }
     if (a === "finish") { state.run.phase = "mark"; save(); render(); window.scrollTo(0, 0); return; }
-    if (a === "abandon") { if (!confirm("Stop this mock exam? Nothing will be saved.")) return; state.run = null; save(); render(); window.scrollTo(0, 0); return; }
+    if (a === "abandon") { if (!twice("abandon")) return; state.run = null; save(); render(); window.scrollTo(0, 0); return; }
     if (a === "savescore") {
       const qs = mockQuestions(state.run);
       const blankOnes = qs.filter((q, i) => state.run.marks[i] == null).length;
-      if (blankOnes && !confirm(plural(blankOnes, "question") + " without marks will count as zero. Save anyway?")) return;
+      if (blankOnes && !twice("savescore")) return;
       const total = qs.reduce((x, q) => x + q.marks, 0), got = qs.reduce((x, q, i) => x + (Number(state.run.marks[i]) || 0), 0);
       state.scores[MOCK_SCORE[state.run.id]] = Math.round((100 * got) / total);
       state.run.phase = "done"; save(); render(); window.scrollTo(0, 0); return;
@@ -531,7 +535,7 @@
     const m = el.dataset.id ? state.mistakes.find((x) => String(x.id) === el.dataset.id) : null;
     if (a === "clean" && m) { m.clean = (m.clean || 0) + 1; if (m.clean >= 2) m.closed = true; else m.next = addDays(t, 4); }
     if (a === "again" && m) { m.clean = 0; m.next = addDays(t, 3); }
-    if (a === "remove" && m) { if (!confirm("Remove this mistake from the log?")) return; state.mistakes = state.mistakes.filter((x) => x !== m); }
+    if (a === "remove" && m) { if (!twice("rm-" + m.id)) return; state.mistakes = state.mistakes.filter((x) => x !== m); }
     save();
     render(el.dataset.key);
   });
@@ -575,25 +579,48 @@
 
   // ---------- backup ----------
 
-  document.getElementById("export").addEventListener("click", () => {
+  const $ = (id) => document.getElementById(id);
+  const say = (text) => { $("backup-msg").textContent = text; };
+  let pending = null;
+
+  function offerRestore(txt) {
+    let data;
+    try { data = JSON.parse(txt); } catch (e) { data = null; }
+    if (!data || typeof data.done !== "object" || !Array.isArray(data.mistakes)) { pending = null; $("restore-confirm").hidden = true; say("That is not a backup from this site."); return; }
+    pending = data;
+    say("Replace the progress saved in this browser with this backup?");
+    $("restore-confirm").hidden = false;
+  }
+
+  if (window.self !== window.top) $("export").hidden = true; // embedded viewers block downloads; copying still works
+
+  $("export").addEventListener("click", () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
     const a = Object.assign(document.createElement("a"), { href: url, download: "math156-prep-" + today() + ".json" });
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    say("Backup downloaded.");
   });
 
-  const fileInput = document.getElementById("import-file");
-  document.getElementById("import").addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files[0];
-    if (!file) return;
-    file.text().then((txt) => {
-      let data;
-      try { data = JSON.parse(txt); } catch (e) { data = null; }
-      if (!data || typeof data.done !== "object" || !Array.isArray(data.mistakes)) { alert("That file is not a backup from this site."); return; }
-      if (!confirm("Restore this backup? It replaces the progress saved in this browser.")) return;
-      state = Object.assign(blank(), data); save(); render();
-    }).finally(() => { fileInput.value = ""; });
+  $("copy").addEventListener("click", () => {
+    const txt = JSON.stringify(state);
+    const done = () => say("Backup copied. Paste it into a note or a message to yourself.");
+    const fallback = () => { $("paste").value = txt; $("paste").select(); say("Copy the selected text and keep it somewhere safe."); };
+    try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
   });
+
+  $("import").addEventListener("click", () => $("import-file").click());
+  $("import-file").addEventListener("change", () => {
+    const file = $("import-file").files[0];
+    if (!file) return;
+    file.text().then(offerRestore).finally(() => { $("import-file").value = ""; });
+  });
+  $("paste-go").addEventListener("click", () => offerRestore($("paste").value));
+  $("restore-yes").addEventListener("click", () => {
+    if (!pending) return;
+    state = Object.assign(blank(), pending); pending = null; save(); render();
+    $("restore-confirm").hidden = true; $("paste").value = ""; say("Backup restored.");
+  });
+  $("restore-no").addEventListener("click", () => { pending = null; $("restore-confirm").hidden = true; say(""); });
 
   // ---------- start ----------
 

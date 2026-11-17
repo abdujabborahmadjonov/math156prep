@@ -34,12 +34,23 @@
       <summary>How this works</summary>
       <dl id="rules"></dl>
     </details>
-    <p class="save-note">
-      Your progress is saved in this browser only.
-      <button type="button" class="link" id="export">Download a backup</button>
-      <button type="button" class="link" id="import">Restore a backup</button>
-      <input type="file" id="import-file" accept="application/json" hidden>
-    </p>
+    <details class="backup">
+      <summary>Back up or restore</summary>
+      <p>Your progress is saved in this browser only. A backup lets you move it to another device or keep it safe.</p>
+      <p class="backup-row">
+        <button type="button" class="btn plain tight" id="export">Download a backup</button>
+        <button type="button" class="btn plain tight" id="copy">Copy a backup</button>
+        <button type="button" class="btn plain tight" id="import">Restore from a file</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </p>
+      <label class="field"><span>Or paste a backup here</span><textarea id="paste" rows="3" spellcheck="false"></textarea></label>
+      <p class="backup-row"><button type="button" class="btn plain tight" id="paste-go">Restore from pasted text</button></p>
+      <p class="backup-row" id="restore-confirm" hidden>
+        <button type="button" class="btn tight" id="restore-yes">Replace my progress</button>
+        <button type="button" class="btn plain tight" id="restore-no">Cancel</button>
+      </p>
+    </details>
+    <p id="backup-msg" role="status"></p>
   </footer>
 
   <script src="vendor/katex/katex.min.js"></script>
