@@ -1,0 +1,12 @@
+{
+  "name": "math156-prep",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MATH 156 final prep: a 35 day study site",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

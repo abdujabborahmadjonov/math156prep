@@ -13,3 +13,5 @@ A 35 day study site for the MATH 156 final (Nov 17 to Dec 21, 2026).
 Plain HTML, CSS and JavaScript with no build step. The plan is in `data.js`, questions and exams in `questions.js`, explanations and quick checks in `lessons.js`.
 Maths is typeset with KaTeX (bundled in `vendor/katex`, MIT licence). All questions were written for this plan and every answer was checked with SymPy.
 Progress is stored in the browser (localStorage); the footer has backup and restore.
+
+To serve it as a web service, run `node server.js` (no dependencies; it listens on `$PORT`, or 3000). LivOps runs it this way.
